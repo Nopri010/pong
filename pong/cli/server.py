@@ -6,18 +6,13 @@ from pong.api.app import make_app
 from pong.api.websocket.connection_manager import ConnectionManager
 from pong.config import Settings
 from pong.domain.pong.state import PongState
-from pong.domain.potenciometro.entity import Potenciometro
-from pong.infra.input.serial.source import SerialInputSource
+from pong.infra.input.factory import make_input_source
 
 logger = logging.getLogger(__name__)
 
 
 async def run_server() -> None:
     settings = Settings()
-    potenciometros = (
-        Potenciometro.config(identifier="player1", player=1, pin=settings.pot1_pin),
-        Potenciometro.config(identifier="player2", player=2, pin=settings.pot2_pin),
-    )
     connection_manager = ConnectionManager()
     stop_event = asyncio.Event()
     event_loop = asyncio.get_running_loop()
@@ -25,10 +20,18 @@ async def run_server() -> None:
     def on_paddle_update(state: PongState) -> None:
         connection_manager.broadcast_state(state)
 
-    input_source = SerialInputSource(
+    failure: BaseException | None = None
+
+    def on_failure(error: BaseException) -> None:
+        nonlocal failure
+        failure = error
+        logger.error("Falha na entrada: %s", error)
+        stop_event.set()
+
+    input_source = make_input_source(
         settings=settings,
-        potenciomentros=potenciometros,
         on_update=on_paddle_update,
+        on_failure=on_failure,
     )
 
     app = make_app(connection_manager=connection_manager)
@@ -56,10 +59,13 @@ async def run_server() -> None:
             http_server.stop()
             await input_source.stop()
         finally:
+            connection_manager.close_all()
             await http_server.close_all_connections()
             for sig in installed_signals:
                 event_loop.remove_signal_handler(sig)
         logger.info("Servidor finalizado.")
+    if failure is not None:
+        raise failure
 
 
 def main() -> None:

@@ -1,5 +1,13 @@
-from pydantic import Field
+from enum import StrEnum
+from typing import Self
+
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class InputMode(StrEnum):
+    ARDUINO = "arduino"
+    ARDUINO_RASP = "arduino_rasp"
 
 
 class Settings(BaseSettings):
@@ -10,7 +18,26 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         env_prefix="PONG_",
         extra="ignore",
+        allow_inf_nan=False,
     )
+
+    input_mode: InputMode = InputMode.ARDUINO
+    button_player: int = Field(default=1, ge=1, le=2)
+    button_up_pin: int | None = Field(default=None, ge=0, le=27)
+    button_down_pin: int | None = Field(default=None, ge=0, le=27)
+    button_poll_interval_seconds: float = Field(default=0.02, gt=0)
+    button_speed_percent_per_second: float = Field(default=160.0, gt=0)
+    button_debounce_seconds: float = Field(default=0.05, ge=0)
+    button_initial_percentage: float = Field(default=50.0, ge=0, le=100)
+
+    @model_validator(mode="after")
+    def validate_hybrid_pins(self) -> Self:
+        if self.input_mode == InputMode.ARDUINO_RASP:
+            if self.button_up_pin is None or self.button_down_pin is None:
+                raise ValueError("Modo híbrido exige BUTTON_UP_PIN e BUTTON_DOWN_PIN (BCM)")
+            if self.button_up_pin == self.button_down_pin:
+                raise ValueError("Os GPIOs de subir e descer devem ser diferentes")
+        return self
 
     serial_port: str | None = Field(
         default=None,

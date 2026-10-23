@@ -2,7 +2,7 @@
 
 ## Arduino e potenciômetros
 
-- O sketch do projeto está em `docs/arduino/potenciometros.ino`. Abra esse
+- O sketch do projeto está em `docs/arduino/potenciometros/potenciometros.ino`. Abra esse
   arquivo diretamente no Arduino IDE.
 - Em Arduino Uno/Nano clássico, ligue cada potenciômetro (preferencialmente
   10 kΩ) entre `5V` e `GND`, com o terminal central em `A0` (jogador 1) ou

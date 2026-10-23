@@ -45,9 +45,9 @@ class FakeApp:
 class FakeInputSource:
     instance = None
 
-    def __init__(self, settings, potenciomentros, on_update) -> None:
+    def __init__(self, settings, on_update, on_failure) -> None:
         self.settings = settings
-        self.potenciomentros = potenciomentros
+        self.on_failure = on_failure
         self.on_update = on_update
         self.start_called = False
         self.stop_called = False
@@ -63,7 +63,10 @@ class FakeInputSource:
 
 
 @pytest.mark.asyncio
-async def test_run_server_starts_and_stops_components(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("fail", [False, True])
+async def test_run_server_starts_and_stops_components(
+    monkeypatch: pytest.MonkeyPatch, fail: bool
+) -> None:
     settings = SimpleNamespace(
         pot1_pin="A0",
         pot2_pin="A1",
@@ -78,13 +81,26 @@ async def test_run_server_starts_and_stops_components(monkeypatch: pytest.Monkey
         def broadcast_state(self, _state) -> None:
             return None
 
+        def close_all(self):
+            return None
+
+    class Source(FakeInputSource):
+        async def start(self):
+            await super().start()
+            if fail:
+                self.on_failure(OSError("falha GPIO"))
+
     monkeypatch.setattr(server_module, "Settings", lambda: settings)
     monkeypatch.setattr(server_module, "make_app", lambda connection_manager: fake_app)
-    monkeypatch.setattr(server_module, "SerialInputSource", FakeInputSource)
+    monkeypatch.setattr(server_module, "make_input_source", Source)
     monkeypatch.setattr(server_module, "ConnectionManager", FakeConnectionManager)
     monkeypatch.setattr(server_module.asyncio, "get_running_loop", lambda: fake_loop)
 
-    await server_module.run_server()
+    if fail:
+        with pytest.raises(OSError, match="falha GPIO"):
+            await server_module.run_server()
+    else:
+        await server_module.run_server()
 
     assert fake_app.listen_arguments == (9999, "127.0.0.1")
     assert FakeInputSource.instance is not None

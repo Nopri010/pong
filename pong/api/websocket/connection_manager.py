@@ -23,6 +23,11 @@ class ConnectionManager:
     def remove(self, client: WebSocketHandler):
         self._clients.discard(client)
 
+    def close_all(self) -> None:
+        for client in tuple(self._clients):
+            client.close()
+        self._clients.clear()
+
     def broadcast_state(self, state: PongState):
         payload = serialize_paddle_update(state)
         for client in tuple(self._clients):

@@ -1,5 +1,15 @@
 # 🏓 Pongino
 
+## Montagem com um potenciômetro e dois botões
+
+Este checkout implementa os modos `arduino` (dois potenciômetros) e
+`arduino_rasp` (um potenciômetro e dois botões). Para a montagem atual, A0 controla
+o jogador 1; GPIO 27 sobe e GPIO 22 desce o jogador 2, com GND no pino físico 9.
+Manter pressionado move continuamente; soltar ou pressionar ambos para a barra.
+
+Veja o [guia de configuração e execução na Raspberry](docs/raspberry-botoes.md)
+e o exemplo completo [`.env.raspberry.example`](.env.raspberry.example).
+
 ## Conceito
 
 O projeto demonstra a comunicação entre potenciômetros conectados a um Arduino, ou entre um potenciômetro no Arduino e dois botões na Raspberry Pi, com uma interface Pong distribuída por HTTP e WebSocket. A aplicação normaliza as entradas para percentuais, cria um estado de domínio para as duas raquetes e publica atualizações em tempo real para os navegadores conectados.
@@ -40,6 +50,9 @@ O circuito é composto por um Arduino Uno conectado a dois potenciômetros monta
 - **Potenciômetro 1 (Jogador 1 - Esquerda):** conectado ao pino analógico `A0`
 - **Potenciômetro 2 (Jogador 2 - Direita):** conectado ao pino analógico `A1`
 - **Alimentação:** pinos `5V` e `GND` do Arduino distribuídos para os barramentos da protoboard
+
+O firmware está em [`docs/arduino/potenciometros/potenciometros.ino`](docs/arduino/potenciometros/potenciometros.ino).
+As instruções de gravação e validação estão em [`docs/arduino/README.md`](docs/arduino/README.md).
 
 No modo `arduino_rasp`, um dos potenciômetros é substituído por dois botões conectados aos GPIOs da Raspberry Pi. Cada botão deve ser ligado entre o GPIO configurado e o GND. O projeto usa pull-up interno, portanto o botão pressionado corresponde a nível lógico baixo. Os pinos são configurados pela numeração BCM e os sinais devem permanecer em 3,3 V.
 
@@ -281,7 +294,7 @@ Uma mensagem de atualização de raquete tem este formato:
 │   │       └── serializer.py
 │   ├── cli/
 │   │   ├── __init__.py
-│   │   ├── pots.py
+│   │   ├── input_diagnostics.py
 │   │   └── server.py
 │   ├── domain/
 │   │   ├── __init__.py
@@ -300,7 +313,7 @@ Uma mensagem de atualização de raquete tem este formato:
 │   │       ├── arduino_rasp/
 │   │       │   ├── __init__.py
 │   │       │   └── source.py
-│   │       ├── buttons/
+│   │       ├── botoes/
 │   │       │   ├── __init__.py
 │   │       │   └── gpio.py
 │   │       ├── factory.py
@@ -310,7 +323,7 @@ Uma mensagem de atualização de raquete tem este formato:
 │   │           └── source.py
 │   ├── protocols/
 │   │   ├── __init__.py
-│   │   ├── button_reader.py
+│   │   ├── leitor_botoes.py
 │   │   └── input_source.py
 │   └── web/
 │       ├── index.html

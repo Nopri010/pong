@@ -1,12 +1,12 @@
 from dataclasses import dataclass
 
-from pong.domain.potenciometro.reading import PotenciometroReading
+from pong.domain.jogador import LeituraJogador
 
 
 @dataclass(frozen=True, slots=True)
 class PongState:
-    player_1: PotenciometroReading
-    player_2: PotenciometroReading
+    player_1: LeituraJogador
+    player_2: LeituraJogador
     timestamp: float
 
     @property

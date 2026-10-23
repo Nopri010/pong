@@ -79,7 +79,7 @@ mantém uma segunda fonte de estado para os botões.
 O servidor não deve instanciar GPIO diretamente. A fábrica seleciona a fonte e
 a própria fonte cria os leitores durante `start()`.
 
-O sketch serial fica em `docs/arduino/potenciometros.ino`. Ele lê
+O sketch serial fica em `docs/arduino/potenciometros/potenciometros.ino`. Ele lê
 `A0` e `A1` a 115200 baud; veja `04_raspberry_hardware.md` para gravar o sketch
 e confirmar o protocolo antes de iniciar o servidor.
 

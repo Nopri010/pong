@@ -9,6 +9,8 @@ dependencies = [
     "pyserial>=3.5",
     "pydantic-settings>=2.2",
     "pyserial-asyncio>=0.6",
+    "gpiozero>=2.0.1",
+    "lgpio>=0.2.2.0; sys_platform == 'linux'",
 ]
 
 [tool.uv]
@@ -39,7 +41,7 @@ ignore = []
 
 [tool.taskipy.tasks]
 run = "python -m pong.cli.server"
-cli = "python -m pong.cli.pots"
+cli = "python -m pong.cli.input_diagnostics"
 test = "pytest --cov=pong --cov-branch --cov-report=term-missing --cov-report=xml --cov-fail-under=95"
 lint = "ruff check ."
 format = "ruff format ."
@@ -48,7 +50,7 @@ type-check = "basedpyright"
 [tool.basedpyright]
 include = ["pong"]
 exclude = ["**/__pycache__", ".venv", ".pytest_cache", ".ruff_cache"]
-allowedUntypedLibraries = ["serial_asyncio"]
+allowedUntypedLibraries = ["serial_asyncio", "gpiozero"]
 typeCheckingMode = "strict"
 pythonVersion = "3.12"
 # O Tornado expõe uma sobrecarga parcialmente tipada para RequestHandler.finish.

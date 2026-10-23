@@ -54,3 +54,18 @@ def test_manager_removes_failed_clients_and_logs(caplog, pong_state) -> None:
     assert manager.client_count == 1
     assert len(working.messages) == 1
     assert "cliente indisponível" in caplog.text
+
+
+def test_close_all_releases_websockets():
+    class Client:
+        closed = False
+
+        def close(self):
+            self.closed = True
+
+    manager = ConnectionManager()
+    client = Client()
+    manager.add(client)
+    manager.close_all()
+    assert client.closed
+    assert manager.client_count == 0

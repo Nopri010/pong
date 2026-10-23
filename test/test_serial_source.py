@@ -4,7 +4,7 @@ from collections.abc import Iterator
 import pytest
 
 import pong.infra.input.serial.source as source_module
-from pong.domain.pong.state import PongState
+from pong.infra.input.serial.frame import SerialPotentiometerFrame
 from pong.infra.input.serial.source import SerialInputSource
 
 
@@ -48,13 +48,19 @@ class FakeReader:
             raise asyncio.CancelledError from None
 
 
+async def test_eof_requests_reconnection(settings):
+    source = SerialInputSource(settings, lambda frame: None)
+    with pytest.raises(OSError, match="EOF"):
+        await source._consume_connection(FakeReader([b""]))
+
+
 @pytest.mark.asyncio
 async def test_start_is_idempotent_and_stop_cancels_task(
     settings,
     potentiometers,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    source = SerialInputSource(settings, potentiometers, lambda _state: None)
+    source = SerialInputSource(settings, lambda _state: None)
     running = asyncio.Event()
 
     async def fake_run_loop() -> None:
@@ -76,27 +82,11 @@ async def test_start_is_idempotent_and_stop_cancels_task(
 
 @pytest.mark.asyncio
 async def test_stop_without_start_is_safe(settings, potentiometers) -> None:
-    source = SerialInputSource(settings, potentiometers, lambda _state: None)
+    source = SerialInputSource(settings, lambda _state: None)
 
     await source.stop()
 
     assert await source.is_connected() is False
-
-
-def test_build_state_converts_percentages(
-    settings,
-    potentiometers,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    source = SerialInputSource(settings, potentiometers, lambda _state: None)
-    monkeypatch.setattr(source_module, "time", lambda: 42.0)
-
-    state = source._build_state((25.0, 75.0))
-
-    assert isinstance(state, PongState)
-    assert state.timestamp == 42.0
-    assert state.player1_pct == 25.0
-    assert state.player2_pct == 75.0
 
 
 @pytest.mark.asyncio
@@ -105,8 +95,8 @@ async def test_read_connection_consumes_serial_values_and_closes_writer(
     potentiometers,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    updates: list[PongState] = []
-    source = SerialInputSource(settings, potentiometers, updates.append)
+    updates: list[SerialPotentiometerFrame] = []
+    source = SerialInputSource(settings, updates.append)
     serial = FakeSerial()
     writer = FakeWriter(serial)
     reader = FakeReader([b"0\n", b";\n", b"1023\n"])
@@ -120,8 +110,8 @@ async def test_read_connection_consumes_serial_values_and_closes_writer(
         await source._read_connection()
 
     assert len(updates) == 1
-    assert updates[0].player1_pct == 0.0
-    assert updates[0].player2_pct == 100.0
+    assert updates[0].channel_1_percentage == 0.0
+    assert updates[0].channel_2_percentage == 100.0
     assert serial.reset_called is True
     assert writer.closed is True
     assert writer.wait_closed_called is True
@@ -134,7 +124,7 @@ async def test_run_loop_reconnects_after_serial_error(
     potentiometers,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    source = SerialInputSource(settings, potentiometers, lambda _state: None)
+    source = SerialInputSource(settings, lambda _state: None)
     attempts = 0
 
     async def fake_read_connection() -> None:
@@ -159,8 +149,8 @@ async def test_consume_connection_ignores_timeout_and_empty_lines(
     potentiometers,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    updates: list[PongState] = []
-    source = SerialInputSource(settings, potentiometers, updates.append)
+    updates: list[SerialPotentiometerFrame] = []
+    source = SerialInputSource(settings, updates.append)
     outcomes = iter([TimeoutError(), b"\n", b"0\n", b";\n", b"1023\n"])
 
     class FakeReader:
@@ -184,5 +174,5 @@ async def test_consume_connection_ignores_timeout_and_empty_lines(
         await source._consume_connection(FakeReader())
 
     assert len(updates) == 1
-    assert updates[0].player1_pct == 0.0
-    assert updates[0].player2_pct == 100.0
+    assert updates[0].channel_1_percentage == 0.0
+    assert updates[0].channel_2_percentage == 100.0

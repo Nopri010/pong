@@ -1,13 +1,13 @@
 import pytest
 
-from pong.cli import pots as pots_module
+from pong.cli import input_diagnostics as pots_module
 from pong.domain.pong.state import PongState
 
 
 def test_render_readings_without_state() -> None:
     table = pots_module.render_readings(None)
 
-    assert table.title == "Diagnóstico dos potenciômetros"
+    assert table.title == "Diagnóstico das entradas"
     assert table.row_count == 2
 
 
@@ -18,11 +18,14 @@ def test_render_readings_with_state(pong_state: PongState) -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("hybrid,fail", [(False, False), (True, False), (True, True)])
 async def test_run_updates_live_view_and_stops_source(
     settings,
     potentiometers,
     pong_state: PongState,
     monkeypatch: pytest.MonkeyPatch,
+    hybrid,
+    fail,
 ) -> None:
     class StopLoop(Exception):
         pass
@@ -50,8 +53,9 @@ async def test_run_updates_live_view_and_stops_source(
     class FakeSource:
         instance = None
 
-        def __init__(self, _settings, potenciomentros, on_update) -> None:
+        def __init__(self, _settings, on_update, on_failure) -> None:
             self.on_update = on_update
+            self.on_failure = on_failure
             self.start_called = False
             self.stop_called = False
             FakeSource.instance = self
@@ -59,12 +63,21 @@ async def test_run_updates_live_view_and_stops_source(
         async def start(self) -> None:
             self.start_called = True
             self.on_update(pong_state)
+            if fail:
+                self.on_failure(StopLoop())
+
+        async def is_connected(self) -> bool:
+            return True
 
         async def stop(self) -> None:
             self.stop_called = True
 
+    if hybrid:
+        settings.input_mode = pots_module.InputMode.ARDUINO_RASP
+        settings.button_player = 2
+        settings.button_up_pin, settings.button_down_pin = 27, 22
     monkeypatch.setattr(pots_module, "Settings", lambda: settings)
-    monkeypatch.setattr(pots_module, "SerialInputSource", FakeSource)
+    monkeypatch.setattr(pots_module, "make_input_source", FakeSource)
     monkeypatch.setattr(pots_module, "Console", FakeConsole)
     monkeypatch.setattr(pots_module, "Live", FakeLive)
 
